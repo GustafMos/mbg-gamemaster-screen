@@ -1,0 +1,21 @@
+# Generated 5e data bundles (contains 5etools/WotC content — never commit)
+data/*.js
+!data/README.md
+
+# Downloaded 5etools JSON sources (copyrighted, never commit)
+tools/raw/
+
+# Optional published-adventure maps (WotC content, never commit)
+assets/maps/
+
+# Local screenshots/campaign material
+screenshots/
+tools/obsidian-extra/
+
+# Build output
+**/bin/
+**/obj/
+.vs/
+*.user
+.DS_Store
+Thumbs.db
