@@ -20,7 +20,7 @@
           enc.name || 'Encounter',
           el('span.dim', { style: { fontSize: '13px', fontFamily: 'var(--sans)', marginLeft: '10px', fontWeight: '400' }, text: enc.combatants.length ? enc.combatants.length + ' combatants' : '' })
         ]),
-        el('p', { text: 'Drag monsters here from Search or the Bestiary, drag rows to reorder. Click a combatant to open quick controls and its statblock.' })
+        el('p', { text: 'Drag monsters here from Search or the Bestiary, drag rows to reorder, or drag a combatant onto the battle map. Click a combatant to open quick controls and its statblock.' })
       ]),
       el('div.head-actions', {}, [
         btn('Roll all', 'dice', () => { S.rollAllInitiative(); UI.toast('Initiative rolled for everyone'); }, 'btn sm'),
@@ -174,7 +174,12 @@
     row.addEventListener('dragstart', e => {
       row.classList.add('dragging');
       V._dragId = c.id;
-      try { e.dataTransfer.setData('application/x-mbg-gamemaster-cmb', c.id); e.dataTransfer.effectAllowed = 'move'; } catch (err) {}
+      try {
+        e.dataTransfer.setData('application/x-mbg-gamemaster-cmb', c.id);
+        e.dataTransfer.setData('application/x-mbg-gamemaster', JSON.stringify({ type: 'combatant', combatantId: c.id, name: c.name }));
+        e.dataTransfer.setData('text/plain', c.name);
+        e.dataTransfer.effectAllowed = 'copyMove';
+      } catch (err) {}
     });
     row.addEventListener('dragend', () => { row.classList.remove('dragging'); V._dragId = null; });
     row.addEventListener('dragover', e => { if (V._dragId) { e.preventDefault(); row.style.borderColor = 'rgba(201,163,94,.6)'; } });
@@ -617,7 +622,7 @@
     track.innerHTML = '';
     if (!enc.combatants.length) {
       const e = el('div.dock-empty', { html: '' }, [
-        el('span', { text: 'Drag a monster or party member here to roll initiative.' }),
+        el('span', { text: 'Drag a monster or party member here, or drag a map token up here, to roll initiative.' }),
         (() => { const b = el('button.link-btn', { text: 'Open tracker' }); b.id = 'dockOpen'; b.addEventListener('click', () => DM.navigate('initiative')); return b; })()
       ]);
       track.appendChild(e);
@@ -627,7 +632,7 @@
       const eff = S.effectiveCombatant(c);
       const active = enc.active && i === enc.turnIndex;
       const pct = eff.maxHp ? Math.max(0, Math.min(100, eff.hp / eff.maxHp * 100)) : 0;
-      const card = el('div.dock-card' + (active ? '.active' : '') + (eff.hp <= 0 ? '.dead' : ''), { title: c.name + ' — ' + eff.hp + '/' + eff.maxHp });
+      const card = el('div.dock-card' + (active ? '.active' : '') + (eff.hp <= 0 ? '.dead' : ''), { title: c.name + ' — ' + eff.hp + '/' + eff.maxHp + '. Drag to the battle map to place.' });
       card.appendChild(el('div.dc-top', {}, [
         el('span.dc-init', { text: String(c.init) }),
         el('span.dc-name', { text: c.name }),
@@ -638,6 +643,7 @@
       card.appendChild(bar);
       card.appendChild(el('div.dc-hp', {}, [el('span', { text: eff.hp + '/' + eff.maxHp }), el('span', { text: c.kind === 'player' ? 'PC' : 'CR ' + U.crText(c.cr) })]));
       card.addEventListener('click', () => { V.openCombatant(c.id); });
+      UI.draggable(card, () => ({ type: 'combatant', combatantId: c.id, name: c.name }));
       track.appendChild(card);
     });
   };

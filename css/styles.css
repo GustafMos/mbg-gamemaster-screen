@@ -889,9 +889,10 @@ kbd + span { margin-left: 4px; }
 .dock-empty { display: flex; align-items: center; gap: 5px; color: var(--dim); font-size: 11px; padding: 8px 4px; }
 .dock-card {
   width: 188px; min-width: 188px; border-radius: 8px; border: 1px solid var(--line);
-  background: rgba(255,255,255,.02); padding: 7px 9px; cursor: pointer; position: relative;
+  background: rgba(255,255,255,.02); padding: 7px 9px; cursor: grab; position: relative;
   display: flex; flex-direction: column; justify-content: center; gap: 3px; transition: .15s;
 }
+.dock-card:active { cursor: grabbing; }
 .dock-card:hover { background: rgba(255,255,255,.045); border-color: var(--line-2); }
 .dock-card.active { border-color: rgba(189,42,53,.55); background: linear-gradient(180deg, rgba(189,42,53,.13), rgba(189,42,53,.02)); }
 .dock-card.active::before { content: ""; position: absolute; left: 7px; right: 7px; top: 0; height: 2px; background: var(--accent-2); border-radius: 2px; }

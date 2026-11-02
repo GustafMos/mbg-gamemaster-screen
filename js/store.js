@@ -312,6 +312,7 @@
     t.id = t.id || U.uid('token');
     t.name = t.name || 'Token';
     t.kind = t.kind || 'monster';
+    t.combatantId = t.combatantId || null;
     t.x = U.num(t.x, 0);
     t.y = U.num(t.y, 0);
     t.size = U.clamp(U.num(t.size, 1), 1, 4);
@@ -721,6 +722,46 @@
     return c;
   };
 
+  // Add the creature represented by a map token to initiative. Player tokens
+  // reuse the existing player combatant; monster tokens keep their current HP.
+  S.addTokenCombatant = function (token) {
+    if (!token) return null;
+    if (token.playerId) {
+      const c = S.addPlayerCombatant(token.playerId);
+      const existing = c || state.encounter.combatants.find(x => x.playerId === token.playerId);
+      if (existing) {
+        S.update(s => {
+          const mt = s.map.tokens.find(x => x.id === token.id);
+          if (mt) mt.combatantId = existing.id;
+        });
+      }
+      return c;
+    }
+    if (token.combatantId && S.combatant(token.combatantId)) return null;
+    const m = token.monsterName ? Data.monster(token.monsterName, token.source) : null;
+    const c = S.newCombatant({
+      kind: 'monster',
+      monsterName: token.monsterName || '',
+      source: token.source || (m && m.source) || '',
+      name: token.name,
+      ac: U.num(token.ac, m ? monsterAc(m) : 10),
+      hp: U.num(token.hp, m ? monsterHp(m) : 1),
+      maxHp: Math.max(1, U.num(token.maxHp, token.hp || 1)),
+      cr: m ? m.cr : token.cr,
+      xp: m ? U.crToXp(m.cr) : token.xp,
+      init: state.settings.autoRollInitiative === false ? 0 : U.dice.evaluate('1d20').total + U.mod((m && m.dex) || 10),
+      color: token.color
+    });
+    S.update(s => {
+      s.encounter.combatants.push(c);
+      s.encounter.combatants.sort((a, b) => b.init - a.init);
+      if (!s.encounter.active) { s.encounter.active = true; s.encounter.round = 1; s.encounter.turnIndex = -1; }
+      const mt = s.map.tokens.find(x => x.id === token.id);
+      if (mt) mt.combatantId = c.id;
+    });
+    return c;
+  };
+
   function monsterAc(m) {
     const ac = m.ac;
     if (!ac) return 10;
@@ -746,6 +787,7 @@
   S.removeCombatant = function (id) {
     S.update(s => {
       s.encounter.combatants = s.encounter.combatants.filter(c => c.id !== id);
+      s.map.tokens.forEach(t => { if (t.combatantId === id) t.combatantId = null; });
       if (s.encounter.turnIndex >= s.encounter.combatants.length) s.encounter.turnIndex = s.encounter.combatants.length - 1;
     });
   };
@@ -753,6 +795,7 @@
   S.clearEncounter = function () {
     S.update(s => {
       s.encounter = { id: U.uid('enc'), name: 'Untitled encounter', round: 0, turnIndex: -1, active: false, combatants: [] };
+      s.map.tokens.forEach(t => { t.combatantId = null; });
     });
   };
 

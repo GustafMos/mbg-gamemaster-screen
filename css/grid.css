@@ -57,6 +57,7 @@
 .map-token:active { cursor: grabbing; }
 .map-token:hover { box-shadow: 0 4px 16px rgba(0,0,0,.65), 0 0 0 2px rgba(201,163,94,.22); }
 .map-token.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,163,94,.28), 0 4px 16px rgba(0,0,0,.7); }
+.map-token.drag-to-init { opacity: .55; }
 .map-token.player { border-style: solid; }
 .map-token.monster { border-style: double; border-width: 3px; }
 .mt-initials { font-family: var(--serif); font-weight: 700; font-size: 15px; line-height: 1; text-shadow: 0 1px 3px #000; }

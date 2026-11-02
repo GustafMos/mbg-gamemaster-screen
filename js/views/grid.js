@@ -27,7 +27,7 @@
       el('div', {}, [
         el('div.eyebrow', { text: 'Tabletop' }),
         el('h1', { text: 'Battle Map' }),
-        el('p', { text: 'Drag tokens around the grid. Switch on Measure and drag across the map to read the distance. Use Add token to place monsters and party members.' })
+        el('p', { text: 'Drag tokens around the grid. Drag a token onto the initiative bar to add it to the fight, or drag a combatant from the bar onto the grid. Switch on Measure and drag across the map to read the distance.' })
       ]),
       el('div.head-actions', {}, [
         (() => { const b = el('button.btn.sm', {}, [U.svg('users'), el('span', { text: 'Place party' })]); b.addEventListener('click', addAllParty); return b; })(),
@@ -162,8 +162,18 @@
       const startClientX = e.clientX, startClientY = e.clientY;
       const ox = t.x, oy = t.y;
       let moved = false;
+      let overDock = false;
+      const setDockHover = (on) => {
+        if (overDock === on) return;
+        overDock = on;
+        tok.classList.toggle('drag-to-init', on);
+        const dock = document.getElementById('dock');
+        if (dock) dock.classList.toggle('dragover', on);
+      };
       try { tok.setPointerCapture(e.pointerId); } catch (err) {}
       const move = (ev) => {
+        if (isOverInitiativeDock(ev.clientX, ev.clientY)) { setDockHover(true); return; }
+        setDockHover(false);
         const dx = Math.round((ev.clientX - startClientX) / map.cell);
         const dy = Math.round((ev.clientY - startClientY) / map.cell);
         if (!dx && !dy) return;
@@ -173,18 +183,36 @@
         tok.style.left = (t.x * map.cell + 3) + 'px';
         tok.style.top = (t.y * map.cell + 3) + 'px';
       };
-      const up = () => {
+      const finish = (ev, cancelled) => {
         tok.removeEventListener('pointermove', move);
         tok.removeEventListener('pointerup', up);
-        tok.removeEventListener('pointercancel', up);
+        tok.removeEventListener('pointercancel', cancel);
         try { tok.releasePointerCapture(e.pointerId); } catch (err) {}
-        if (moved) S.moveMapToken(t.id, t.x, t.y);
+        const dropOnDock = !cancelled && (overDock || isOverInitiativeDock(ev.clientX, ev.clientY));
+        setDockHover(false);
+        if (dropOnDock) { sendTokenToInitiative(t); return; }
+        if (!cancelled && moved) S.moveMapToken(t.id, t.x, t.y);
       };
+      const up = (ev) => finish(ev, false);
+      const cancel = (ev) => finish(ev, true);
       tok.addEventListener('pointermove', move);
       tok.addEventListener('pointerup', up);
-      tok.addEventListener('pointercancel', up);
+      tok.addEventListener('pointercancel', cancel);
     });
     tok.addEventListener('dblclick', (e) => { e.stopPropagation(); select(t.id); openToken(t); });
+  }
+
+  function isOverInitiativeDock(x, y) {
+    const dock = document.getElementById('dock');
+    if (!dock) return false;
+    const r = dock.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
+  function sendTokenToInitiative(t) {
+    const c = S.addTokenCombatant(t);
+    if (c) UI.toast('🎲 <b>' + U.esc(t.name) + '</b> rolled into initiative');
+    else UI.toast(U.esc(t.name) + ' is already in initiative');
   }
 
   function bindSurface() {
@@ -221,7 +249,8 @@
 
     UI.dropzone(surface, (payload, e) => {
       const c = cellFromEvent(e);
-      addPayloadToken(payload, c);
+      if (payload.type === 'combatant') addCombatantToken(payload, c);
+      else addPayloadToken(payload, c);
     });
   }
 
@@ -360,7 +389,7 @@
       sb.appendChild(sizeRow);
     } else {
       sb.appendChild(el('div.small.dim', { text: 'Click a token to select it. Drag tokens with the mouse. Turn on Measure to drag a distance line across the grid.' }));
-      sb.appendChild(el('div.tip-box', { style: { marginTop: '10px' }, html: '<b>Drag tokens</b> to move them. <b>Measure</b> reads the grid; use <b>Add token</b> for monsters or party members.' }));
+      sb.appendChild(el('div.tip-box', { style: { marginTop: '10px' }, html: '<b>Drag tokens</b> to move them, drop one on the initiative bar to add it to the fight, or drag a combatant from the bar back onto the map. <b>Measure</b> reads the grid.' }));
     }
     selPanel.appendChild(sb);
     sideEl.appendChild(selPanel);
@@ -441,6 +470,48 @@
     return { x: 0, y: 0 };
   }
 
+  function monsterSize(m) {
+    if (!m || !m.size) return 1;
+    const s = String(m.size)[0];
+    return s === 'L' ? 2 : s === 'H' ? 3 : s === 'G' ? 4 : 1;
+  }
+
+  function addCombatantToken(payload, cell) {
+    const c = S.combatant(payload.combatantId);
+    if (!c) return;
+    const eff = S.effectiveCombatant(c);
+    if (c.playerId) {
+      const existing = S.state.map.tokens.find(t => t.playerId === c.playerId);
+      if (existing) {
+        S.moveMapToken(existing.id, cell.x, cell.y);
+        selected = existing.id;
+        V.refresh();
+        UI.toast('Moved <b>' + U.esc(c.name) + '</b> on the map');
+        return;
+      }
+      addPayloadToken({ type: 'player', playerId: c.playerId }, cell);
+      return;
+    }
+    const existing = S.state.map.tokens.find(t => t.combatantId === c.id);
+    if (existing) {
+      S.moveMapToken(existing.id, cell.x, cell.y);
+      selected = existing.id;
+      V.refresh();
+      UI.toast('Moved <b>' + U.esc(c.name) + '</b> on the map');
+      return;
+    }
+    const m = c.monsterName ? DM.data.monster(c.monsterName, c.source) : null;
+    const size = monsterSize(m);
+    const pos = cell || findFreeCell(size);
+    const tok = S.addMapToken({
+      kind: 'monster', monsterName: c.monsterName, source: c.source, combatantId: c.id, name: c.name,
+      x: pos.x, y: pos.y, size, hp: eff.hp, maxHp: eff.maxHp, ac: eff.ac, color: c.color
+    });
+    selected = tok.id;
+    V.refresh();
+    UI.toast('Placed <b>' + U.esc(c.name) + '</b> on the map');
+  }
+
   function addPayloadToken(payload, cell) {
     if (!payload) return;
     if (payload.type === 'player') {
@@ -456,7 +527,7 @@
     if (payload.type === 'monster') {
       const m = DM.data.monster(payload.name, payload.source);
       if (!m) return;
-      const size = m.size && ['L', 'H', 'G'].includes(m.size[0]) ? (m.size[0] === 'L' ? 2 : m.size[0] === 'H' ? 3 : 4) : 1;
+      const size = monsterSize(m);
       const pos = cell || findFreeCell(size);
       S.addMapToken({
         kind: 'monster', monsterName: m.name, source: m.source, name: m.name,
