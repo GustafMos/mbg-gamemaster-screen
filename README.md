@@ -12,7 +12,7 @@ An offline-first, single-page DM screen for 5e, built with vanilla JavaScript. I
 - **Compendium search** — vague, typo-tolerant search across monsters, magic items, spells, feats, rules, notes and adventure areas. Press Enter to open the first result.
 - **Homebrew** — clone and edit any item, spell or monster; homebrew is searchable
 - **Encounter builder** — adjusted XP, party thresholds, templates, one-click run
-- **Battle map** — simple grid, draggable tokens, measuring in 5 ft squares or 5–10–5 diagonals
+- **Battle map** — simple grid, draggable tokens, two-way drag-and-drop with the initiative bar, measuring in 5 ft squares or 5–10–5 diagonals
 - **Character sheets** — a two-page A4 raven sheet with direct PDF export and print support
 - **Notes** — Markdown-ish journal with folders/tags, pinning, search and Obsidian folder import
 - **Adventure toolkit** — chapter reader, tarokka reading, NPC index and maps, if you import the module data yourself
