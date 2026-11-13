@@ -91,6 +91,12 @@ The app is built to degrade gracefully without the data: screens simply show emp
 
 Do not redistribute WotC content or 5etools data. The MIT license covers this project's code and original assets only.
 
+## Support my cats
+
+If you want to support me and my projects, help me fund tasty anti-allergenic food for my two cats, **Carla-Mittersteig von Starhemberg** and **Rosa-Luxemburg von Starhemberg**. <3 Thank you!
+
+**Ko-fi:** <https://ko-fi.com/ripscorpy> · [FUNDING.md](FUNDING.md)
+
 ## License
 
 Code: **MIT** — see `LICENSE`.
